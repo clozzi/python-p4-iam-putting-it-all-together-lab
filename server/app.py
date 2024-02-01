@@ -41,10 +41,32 @@ class CheckSession(Resource):
             return {}, 401
 
 class Login(Resource):
-    pass
+    
+    def post(self):
+
+        username = request.get_json()['username']
+        password = request.get_json()['password']
+        user = User.query.filter(User.username == username).first()
+
+        if user:
+            if user.authenticate(password):
+                session['user_id'] = user.id
+                return user.to_dict(), 200
+    
+        return {'error': '401 Unauthorized'}, 401
+
 
 class Logout(Resource):
-    pass
+    
+    def delete(self):
+        
+        # if session['user_id']:
+        #     session['user_id'] = None
+        #     return {'message': '204: No Content'}, 204
+        # return {'message': '401 Unauthorized'}, 401
+
+        session['user_id'] = None
+        return {}, 204
 
 class RecipeIndex(Resource):
     pass
