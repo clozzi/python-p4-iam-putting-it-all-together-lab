@@ -9,6 +9,7 @@ from models import User, Recipe
 
 @app.before_request
 def check_if_logged_in():
+
     open_access_list = [
         'signup',
         'login',
@@ -22,12 +23,20 @@ class Signup(Resource):
 
     def post(self):
 
+        request_json = request.get_json()
+
+        username = request_json.get('username')
+        password = request_json.get('password')
+        image_url = request_json.get('image_url')
+        bio = request_json.get('bio')
+
         user = User(
-            username = request.get_json()['username'],
-            image_url = request.get_json()['image_url'],
-            bio = request.get_json()['bio']
+            username = username,
+            image_url = image_url,
+            bio = bio
         )
-        user.password_hash = request.get_json()['password']
+
+        user.password_hash = password
 
         try:
 
@@ -39,12 +48,15 @@ class Signup(Resource):
             return user.to_dict(), 201
         
         except IntegrityError:
+
             return {'error': '422 Unprocessable Entity'}, 422
 
 class CheckSession(Resource):
     
     def get(self):
+
         user_id = session['user_id']
+
         if user_id:
             user = User.query.filter(User.id == user_id).first()
             return user.to_dict(), 200
@@ -73,10 +85,46 @@ class Logout(Resource):
 
         session['user_id'] = None
         return {}, 204
-
-
+    
 class RecipeIndex(Resource):
-    pass
+    
+    def get(self):
+
+        user_id = session['user_id']
+        user = User.query.filter(User.id == user_id).first()
+
+        recipes = []
+        for recipe in user.recipes:
+            recipes.append(recipe.to_dict())
+
+        return recipes, 200
+
+    def post(self):
+        
+        request_json = request.get_json()
+
+        title = request_json['title']
+        instructions = request_json['instructions']
+        minutes_to_complete = request_json['minutes_to_complete']
+
+        try:
+            new_recipe = Recipe(
+                title = title,
+                instructions = instructions,
+                minutes_to_complete = minutes_to_complete,
+                user_id = session['user_id'],
+            )
+            
+            db.session.add(new_recipe)
+            db.session.commit()
+
+            return new_recipe.to_dict(), 201
+        
+        except IntegrityError:
+
+            return {'error': '422 Invalid Recipe'}, 422
+
+
 
 api.add_resource(Signup, '/signup', endpoint='signup')
 api.add_resource(CheckSession, '/check_session', endpoint='check_session')
